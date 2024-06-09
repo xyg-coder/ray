@@ -104,6 +104,10 @@ class RefBundle:
             return self._cached_location
         else:
             return None  # Return None if cached location is "".
+    
+    def subdataset_index(self) -> int:
+        assert len(self.blocks) > 0
+        return self.blocks[0][0].subdataset_index
 
     def __eq__(self, other) -> bool:
         return self is other
