@@ -45,6 +45,7 @@ class DataOpTask(OpTask):
         streaming_gen: ObjectRefGenerator,
         output_ready_callback: Callable[[RefBundle], None],
         task_done_callback: Callable[[Optional[Exception]], None],
+        subdataset_index: int,
     ):
         """
         Args:
@@ -61,6 +62,7 @@ class DataOpTask(OpTask):
         self._streaming_gen = streaming_gen
         self._output_ready_callback = output_ready_callback
         self._task_done_callback = task_done_callback
+        self.subdataset_index = subdataset_index
 
     def get_waitable(self) -> ObjectRefGenerator:
         return self._streaming_gen
@@ -77,6 +79,7 @@ class DataOpTask(OpTask):
         while max_blocks_to_read is None or num_blocks_read < max_blocks_to_read:
             try:
                 block_ref = self._streaming_gen._next_sync(0)
+                block_ref.subdataset_index = self.subdataset_index
                 if block_ref.is_nil():
                     # The generator currently doesn't have new output.
                     # And it's not stopped yet.
@@ -182,6 +185,7 @@ class PhysicalOperator(Operator):
         self._started = False
         self._metrics = OpRuntimeMetrics(self)
         self._estimated_output_blocks = None
+        self._max_subdataset_index = 0
 
     def __reduce__(self):
         raise ValueError("Operator is not serializable.")
@@ -337,6 +341,8 @@ class PhysicalOperator(Operator):
         """
         output = self._get_next_inner()
         self._metrics.on_output_taken(output)
+        assert output.subdataset_index() >= self._max_subdataset_index, "we should keep the subdataset index increasing only"
+        self._max_subdataset_index = output.subdataset_index()
         return output
 
     def _get_next_inner(self) -> RefBundle:

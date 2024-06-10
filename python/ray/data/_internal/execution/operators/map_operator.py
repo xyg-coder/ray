@@ -324,6 +324,7 @@ class MapOperator(OneToOneOperator, ABC):
             gen,
             lambda output: _output_ready_callback(task_index, output),
             functools.partial(_task_done_callback, task_index),
+            inputs.subdataset_index(),
         )
 
     def _submit_metadata_task(
